@@ -91,6 +91,7 @@ export function AuthProvider({ children }) {
     // SIGNUP (backend requires: username, password, full_name, email, address, phone)
     const signup = async (payload) => {
         const res = await apiSignup(payload);
+        // Backend returns { success, data: { user, accessToken, refreshToken } }
         return res; // signup does NOT auto-login by design
     };
     // LOGIN
@@ -98,13 +99,16 @@ export function AuthProvider({ children }) {
         setLoading(true);
         try {
             const res = await apiLogin({ id, password });
-            if (!res?.token) {
+
+            // Backend returns { success, data: { user, accessToken, refreshToken } }
+            if (!res?.data?.accessToken) {
                 setLoading(false);
-                return false;
+                return { success: false };
             }
+
             // set token (this will also call setAuthToken via effect)
-            setToken(res.token);
-            const mapped = mapApiUser(res.user);
+            setToken(res.data.accessToken);
+            const mapped = mapApiUser(res.data.user);
             setUser(mapped);
             // persist current user for other parts of the UI / page reloads
             try {
@@ -112,12 +116,13 @@ export function AuthProvider({ children }) {
             }
             catch { }
             setLoading(false);
-            return true;
+            setLoading(false);
+            return { success: true, user: mapped };
         }
         catch (err) {
             console.error("Login failed:", err);
             setLoading(false);
-            return false;
+            return { success: false, error: err };
         }
     };
     // LOGOUT
@@ -143,20 +148,20 @@ export function AuthProvider({ children }) {
         return user?.role === role;
     };
     return (<AuthContext.Provider value={{
-            user,
-            token,
-            loading,
-            isLoading,
-            initializing,
-            signup,
-            login,
-            logout,
-            updateProfile,
-            hasRole,
-            isAuthenticated: !!user,
-            setUser,
-        }}>
-      {children}
+        user,
+        token,
+        loading,
+        isLoading,
+        initializing,
+        signup,
+        login,
+        logout,
+        updateProfile,
+        hasRole,
+        isAuthenticated: !!user,
+        setUser,
+    }}>
+        {children}
     </AuthContext.Provider>);
 }
 export function useAuth() {

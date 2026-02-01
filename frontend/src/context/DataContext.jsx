@@ -119,7 +119,7 @@ export function DataProvider({ children }) {
                 const res = await apiAny.apiListUsers();
                 if (!cancelled && res && Array.isArray(res.users)) {
                     const mapped = res.users.map((u) => ({
-                        id: String(u.user_id),
+                        id: String(u.id || u.user_id),
                         username: u.username,
                         name: u.full_name,
                         email: u.email,
@@ -418,25 +418,25 @@ export function DataProvider({ children }) {
         }
     };
     return (<DataContext.Provider value={{
-            parcels,
-            trackingEvents,
-            hubs,
-            vehicles,
-            auditLogs,
-            cities: citiesList,
-            users: usersList,
-            updateParcel,
-            addTrackingEvent,
-            addAuditLog,
-            updateHub,
-            addHub,
-            deleteHub,
-            updateVehicle,
-            addVehicle,
-            deleteVehicle,
-            loadingParcels,
-        }}>
-      {children}
+        parcels,
+        trackingEvents,
+        hubs,
+        vehicles,
+        auditLogs,
+        cities: citiesList,
+        users: usersList,
+        updateParcel,
+        addTrackingEvent,
+        addAuditLog,
+        updateHub,
+        addHub,
+        deleteHub,
+        updateVehicle,
+        addVehicle,
+        deleteVehicle,
+        loadingParcels,
+    }}>
+        {children}
     </DataContext.Provider>);
 }
 export function useData() {

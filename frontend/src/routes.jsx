@@ -16,7 +16,18 @@ import ManageParcels from './pages/admin/ManageParcels';
 import AuditLogs from './pages/admin/AuditLogs';
 import ProtectedRoute from './components/shared/ProtectedRoute';
 import BookParcel from './pages/customer/BookParcel';
+import StoreOwnerDashboard from './pages/store/StoreOwnerDashboard';
+import Profile from './pages/common/Profile';
+
 const routes = [
+    {
+        name: 'Profile',
+        path: '/profile',
+        element: (<ProtectedRoute allowedRoles={['customer', 'courier', 'admin', 'store_owner']}>
+            <Profile />
+        </ProtectedRoute>),
+        visible: false,
+    },
     {
         name: 'Home',
         path: '/',
@@ -75,7 +86,7 @@ const routes = [
         name: 'Customer Dashboard',
         path: '/customer/dashboard',
         element: (<ProtectedRoute allowedRoles={['customer']}>
-          <CustomerDashboard />
+            <CustomerDashboard />
         </ProtectedRoute>),
         visible: false,
     },
@@ -83,7 +94,7 @@ const routes = [
         name: 'Tracking',
         path: '/customer/tracking',
         element: (<ProtectedRoute allowedRoles={['customer']}>
-          <Tracking />
+            <Tracking />
         </ProtectedRoute>),
         visible: false,
     },
@@ -103,7 +114,7 @@ const routes = [
         name: 'Book Parcel',
         path: '/customer/book',
         element: (<ProtectedRoute allowedRoles={['customer']}>
-          <BookParcel />
+            <BookParcel />
         </ProtectedRoute>),
         visible: false,
     },
@@ -111,7 +122,15 @@ const routes = [
         name: 'Courier Dashboard',
         path: '/courier/dashboard',
         element: (<ProtectedRoute allowedRoles={['courier']}>
-          <CourierDashboard />
+            <CourierDashboard />
+        </ProtectedRoute>),
+        visible: false,
+    },
+    {
+        name: 'Store Dashboard',
+        path: '/store/dashboard',
+        element: (<ProtectedRoute allowedRoles={['store_owner']}>
+            <StoreOwnerDashboard />
         </ProtectedRoute>),
         visible: false,
     },
@@ -131,7 +150,7 @@ const routes = [
         name: 'Admin Dashboard',
         path: '/admin/dashboard',
         element: (<ProtectedRoute allowedRoles={['admin']}>
-          <AdminDashboard />
+            <AdminDashboard />
         </ProtectedRoute>),
         visible: false,
     },
@@ -139,7 +158,7 @@ const routes = [
         name: 'Manage Hubs',
         path: '/admin/hubs',
         element: (<ProtectedRoute allowedRoles={['admin']}>
-          <ManageHubs />
+            <ManageHubs />
         </ProtectedRoute>),
         visible: false,
     },
@@ -147,7 +166,7 @@ const routes = [
         name: 'Manage Vehicles',
         path: '/admin/vehicles',
         element: (<ProtectedRoute allowedRoles={['admin']}>
-          <ManageVehicles />
+            <ManageVehicles />
         </ProtectedRoute>),
         visible: false,
     },
@@ -155,7 +174,7 @@ const routes = [
         name: 'Manage Users',
         path: '/admin/users',
         element: (<ProtectedRoute allowedRoles={['admin']}>
-          <ManageUsers />
+            <ManageUsers />
         </ProtectedRoute>),
         visible: false,
     },
@@ -163,7 +182,7 @@ const routes = [
         name: 'Manage Parcels',
         path: '/admin/parcels',
         element: (<ProtectedRoute allowedRoles={['admin']}>
-          <ManageParcels />
+            <ManageParcels />
         </ProtectedRoute>),
         visible: false,
     },
@@ -171,7 +190,7 @@ const routes = [
         name: 'Audit Logs',
         path: '/admin/audit-logs',
         element: (<ProtectedRoute allowedRoles={['admin']}>
-          <AuditLogs />
+            <AuditLogs />
         </ProtectedRoute>),
         visible: false,
     },

@@ -90,9 +90,10 @@ export function apiSignup(payload) {
 }
 
 export function apiLogin({ id, password }) {
+  // Backend expects { email, password } so send id as email
   return request("/auth/login", {
     method: "POST",
-    body: JSON.stringify({ id, password }),
+    body: JSON.stringify({ email: id, password }),
   });
 }
 
@@ -132,7 +133,7 @@ export function apiListAllParcels(filters = {}) {
   if (filters.status) queryParams.append("status", filters.status);
   if (filters.sender_id) queryParams.append("sender_id", filters.sender_id);
   if (filters.courier_id) queryParams.append("courier_id", filters.courier_id);
-  
+
   const query = queryParams.toString();
   return request(`/parcel${query ? `?${query}` : ""}`, {
     method: "GET",
@@ -207,7 +208,7 @@ export function apiCreateTrackingEvent(payload) {
 export function apiListHubs(filters = {}) {
   const queryParams = new URLSearchParams();
   if (filters.city_id) queryParams.append("city_id", filters.city_id);
-  
+
   const query = queryParams.toString();
   return request(`/hub${query ? `?${query}` : ""}`, {
     method: "GET",
@@ -258,7 +259,7 @@ export function apiListVehicles(filters = {}) {
   const queryParams = new URLSearchParams();
   if (filters.courier_id) queryParams.append("courier_id", filters.courier_id);
   if (filters.status) queryParams.append("status", filters.status);
-  
+
   const query = queryParams.toString();
   return request(`/vehicle${query ? `?${query}` : ""}`, {
     method: "GET",
@@ -308,7 +309,7 @@ export function apiDeleteVehicle(id) {
 export function apiListCities(filters = {}) {
   const queryParams = new URLSearchParams();
   if (filters.state_id) queryParams.append("state_id", filters.state_id);
-  
+
   const query = queryParams.toString();
   return request(`/city${query ? `?${query}` : ""}`, {
     method: "GET",
@@ -344,7 +345,7 @@ export function apiUpdateCity(id, payload) {
 export function apiListUsers(filters = {}) {
   const queryParams = new URLSearchParams();
   if (filters.role) queryParams.append("role", filters.role);
-  
+
   const query = queryParams.toString();
   return request(`/user${query ? `?${query}` : ""}`, {
     method: "GET",
@@ -401,7 +402,7 @@ export function apiGetAuditLogs(filters = {}) {
   if (filters.actor_id) queryParams.append("actor_id", filters.actor_id);
   if (filters.limit) queryParams.append("limit", filters.limit);
   if (filters.offset) queryParams.append("offset", filters.offset);
-  
+
   const query = queryParams.toString();
   return request(`/audit${query ? `?${query}` : ""}`, {
     method: "GET",
@@ -420,7 +421,7 @@ export function apiGetUserAuditLogs(userId, filters = {}) {
   const queryParams = new URLSearchParams();
   if (filters.limit) queryParams.append("limit", filters.limit);
   if (filters.offset) queryParams.append("offset", filters.offset);
-  
+
   const query = queryParams.toString();
   return request(`/audit/user/${userId}${query ? `?${query}` : ""}`, {
     method: "GET",
@@ -432,7 +433,7 @@ export function apiGetEntityAuditLogs(entityType, entityId, filters = {}) {
   const queryParams = new URLSearchParams();
   if (filters.limit) queryParams.append("limit", filters.limit);
   if (filters.offset) queryParams.append("offset", filters.offset);
-  
+
   const query = queryParams.toString();
   return request(`/audit/entity/${entityType}/${entityId}${query ? `?${query}` : ""}`, {
     method: "GET",
@@ -466,8 +467,47 @@ export function apiCalculateFare(weight, length, width, height, distance = null)
   queryParams.append("width", width);
   queryParams.append("height", height);
   if (distance) queryParams.append("distance", distance);
-  
+
   return request(`/fare/calculate?${queryParams.toString()}`, {
     method: "GET",
+  });
+}
+
+/* ================== ADDRESS API ================== */
+
+// Get all states
+export function apiGetStates() {
+  return request("/state", {
+    method: "GET",
+  });
+}
+
+// Get districts by state
+export function apiGetDistricts(stateId) {
+  const query = stateId ? `?state_id=${stateId}` : "";
+  return request(`/district${query}`, {
+    method: "GET",
+  });
+}
+
+// Get my addresses
+export function apiGetMyAddresses() {
+  return request("/address", {
+    method: "GET",
+  });
+}
+
+// Add new address
+export function apiAddAddress(payload) {
+  return request("/address", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+// Delete address
+export function apiDeleteAddress(id) {
+  return request(`/address/${id}`, {
+    method: "DELETE",
   });
 }
