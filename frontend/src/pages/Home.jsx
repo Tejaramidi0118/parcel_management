@@ -51,24 +51,13 @@ export default function Home() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             {/* If user is logged in, show Dashboard instead of Login/Signup */}
-            {user ? (
-              <Link to={`/${user.role}/dashboard`}>
-                <Button size="lg" className="w-full sm:w-auto">
-                  Go to Dashboard
-                </Button>
-              </Link>
-            ) : (
+            {!user && (
               <Link to="/login">
                 <Button size="lg" className="w-full sm:w-auto">
                   Get Started
                 </Button>
               </Link>
             )}
-            <Link to="/fare-calculator">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                Calculate Fare
-              </Button>
-            </Link>
           </div>
         </div>
       </div>

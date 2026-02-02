@@ -18,7 +18,8 @@ router.post(
     '/',
     [
         body('customerId').isInt().withMessage('Valid customer ID required'),
-        body('hubId').isInt().withMessage('Valid hub ID required'),
+        body('hubId').optional({ nullable: true }).isInt().withMessage('Valid hub ID required'),
+        body('storeId').optional({ nullable: true }).isInt().withMessage('Valid store ID required'),
         body('items').isArray({ min: 1 }).withMessage('Order must have at least one item'),
         body('items.*.productId').isInt().withMessage('Valid product ID required'),
         body('items.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),

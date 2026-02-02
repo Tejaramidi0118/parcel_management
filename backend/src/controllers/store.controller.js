@@ -3,25 +3,58 @@ import pool from "../config/db.config.js";
 // Create Store
 export const createStore = async (req, res, next) => {
     try {
-        const { name, address_street, city_id, district_id, latitude, longitude } = req.body;
-        const owner_id = req.user.id; // From authMiddleware
+        const { name, description, image_url, address_street, city_id, district_id, state_id, latitude, longitude } = req.body;
+        const owner_id = req.user.id;
 
         // Basic validation or defaults
         const lat = latitude || 0.0;
         const lng = longitude || 0.0;
-        // Default state_id = 1 if not provided? Schema has not null?
-        // Let's assume schema handles it or we pass 1.
-        const state_id = req.body.state_id || 1;
+        const st_id = state_id || 1; // Default or from body
 
         const result = await pool.query(
             `INSERT INTO store (
-                owner_id, name, address_street, city_id, district_id, state_id, latitude, longitude
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                owner_id, name, description, image_url, address_street, city_id, district_id, state_id, latitude, longitude
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING *`,
-            [owner_id, name, address_street, city_id, district_id, state_id, lat, lng]
+            [owner_id, name, description, image_url, address_street, city_id, district_id, st_id, lat, lng]
         );
 
         res.status(201).json({
+            success: true,
+            store: result.rows[0]
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Update Store
+export const updateStore = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const owner_id = req.user.id;
+        const { name, description, image_url, address_street, city_id, district_id, state_id, is_active } = req.body;
+
+        const result = await pool.query(
+            `UPDATE store SET 
+                name = COALESCE($1, name),
+                description = COALESCE($2, description),
+                image_url = COALESCE($3, image_url),
+                address_street = COALESCE($4, address_street),
+                city_id = COALESCE($5, city_id),
+                district_id = COALESCE($6, district_id),
+                state_id = COALESCE($7, state_id),
+                is_active = COALESCE($8, is_active)
+            WHERE store_id = $9 AND owner_id = $10
+            RETURNING *`,
+            [name, description, image_url, address_street, city_id, district_id, state_id, is_active, id, owner_id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Store not found or unauthorized" });
+        }
+
+        res.json({
             success: true,
             store: result.rows[0]
         });
@@ -78,6 +111,32 @@ export const getNearbyStores = async (req, res, next) => {
         res.json({
             success: true,
             stores: result.rows
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Get Store by ID (Public)
+export const getStoreById = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query(
+            `SELECT s.*, c.name as city_name, d.name as district_name 
+             FROM store s
+             LEFT JOIN city c ON s.city_id = c.city_id
+             LEFT JOIN district d ON s.district_id = d.district_id
+             WHERE s.store_id = $1`,
+            [id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Store not found" });
+        }
+
+        res.json({
+            success: true,
+            store: result.rows[0]
         });
     } catch (error) {
         next(error);

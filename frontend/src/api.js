@@ -375,12 +375,12 @@ export function apiUpdateUser(id, payload) {
 }
 
 // Change password
-export function apiChangePassword(userId, currentPassword, newPassword) {
-  return request(`/user/${userId}/password`, {
-    method: "PUT",
+export function apiChangePassword(currentPassword, newPassword) {
+  return request(`/auth/change-password`, {
+    method: "POST",
     body: JSON.stringify({
-      current_password: currentPassword,
-      new_password: newPassword,
+      oldPassword: currentPassword,
+      newPassword: newPassword,
     }),
   });
 }
@@ -505,9 +505,83 @@ export function apiAddAddress(payload) {
   });
 }
 
+/* ================== STORE API ================== */
+
+// Create Store
+export function apiCreateStore(payload) {
+  return request("/store", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+// Update Store
+export function apiUpdateStore(id, payload) {
+  return request(`/store/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+// Get My Stores
+export function apiGetMyStores() {
+  return request("/store/my", {
+    method: "GET",
+  });
+}
+
+// Get Nearby Stores
+export function apiGetNearbyStores(filters = {}) {
+  const queryParams = new URLSearchParams();
+  if (filters.city_id) queryParams.append("city_id", filters.city_id);
+  if (filters.district_id) queryParams.append("district_id", filters.district_id);
+
+  return request(`/store/nearby?${queryParams.toString()}`, {
+    method: "GET",
+  });
+}
+
+/* ================== PRODUCT API ================== */
+
+// Create Product
+export function apiCreateProduct(payload) {
+  return request("/product", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+// Get Products by Store
+export function apiGetStoreProducts(storeId) {
+  return request(`/product/store/${storeId}`, {
+    method: "GET",
+  });
+}
+
+// Get Store by ID
+export function apiGetStore(id) {
+  return request(`/store/${id}`, {
+    method: "GET",
+  });
+}
+
+// Delete Product
+export function apiDeleteProduct(id) {
+  return request(`/product/${id}`, {
+    method: "DELETE",
+  });
+}
+
 // Delete address
 export function apiDeleteAddress(id) {
   return request(`/address/${id}`, {
     method: "DELETE",
+  });
+}
+// Create Order
+export function apiCreateOrder(payload) {
+  return request("/api/orders", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }

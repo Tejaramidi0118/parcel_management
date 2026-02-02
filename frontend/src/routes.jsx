@@ -17,6 +17,10 @@ import AuditLogs from './pages/admin/AuditLogs';
 import ProtectedRoute from './components/shared/ProtectedRoute';
 import BookParcel from './pages/customer/BookParcel';
 import StoreOwnerDashboard from './pages/store/StoreOwnerDashboard';
+import MarketplaceHome from './pages/shop/MarketplaceHome';
+import StorePage from './pages/shop/StorePage';
+import Cart from './pages/shop/Cart';
+import Checkout from './pages/shop/Checkout';
 import Profile from './pages/common/Profile';
 
 const routes = [
@@ -131,6 +135,38 @@ const routes = [
         path: '/store/dashboard',
         element: (<ProtectedRoute allowedRoles={['store_owner']}>
             <StoreOwnerDashboard />
+        </ProtectedRoute>),
+        visible: false,
+    },
+    {
+        name: 'Shop',
+        path: '/shop',
+        element: (<ProtectedRoute allowedRoles={['customer']}>
+            <MarketplaceHome />
+        </ProtectedRoute>),
+        visible: false,
+    },
+    {
+        name: 'Store Page',
+        path: '/store/:id',
+        element: (<ProtectedRoute allowedRoles={['customer']}>
+            <StorePage />
+        </ProtectedRoute>),
+        visible: false,
+    },
+    {
+        name: 'Cart',
+        path: '/cart',
+        element: (<ProtectedRoute allowedRoles={['customer']}>
+            <Cart />
+        </ProtectedRoute>),
+        visible: false,
+    },
+    {
+        name: 'Checkout',
+        path: '/checkout',
+        element: (<ProtectedRoute allowedRoles={['customer']}>
+            <Checkout />
         </ProtectedRoute>),
         visible: false,
     },

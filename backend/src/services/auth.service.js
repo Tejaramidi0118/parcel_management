@@ -133,7 +133,6 @@ export const loginUser = async ({ email, password }) => {
       id: user.id,
     });
 
-    // Format response
     return {
       user: {
         id: user.id,
@@ -147,5 +146,30 @@ export const loginUser = async ({ email, password }) => {
     };
   } catch (error) {
     throw error;
+  }
+};
+
+export const changePassword = async (userId, oldPassword, newPassword) => {
+  const client = await pool.connect();
+  try {
+    // 1. Get user password hash
+    const res = await client.query('SELECT password_hash FROM app_user WHERE user_id = $1', [userId]);
+    if (res.rows.length === 0) throw new Error("User not found");
+
+    const { password_hash } = res.rows[0];
+
+    // 2. Verify old password
+    const match = await bcrypt.compare(oldPassword, password_hash);
+    if (!match) throw new Error("Incorrect old password");
+
+    // 3. Hash new password
+    const newHash = await bcrypt.hash(newPassword, 10);
+
+    // 4. Update
+    await client.query('UPDATE app_user SET password_hash = $1 WHERE user_id = $2', [newHash, userId]);
+
+    return { success: true };
+  } finally {
+    client.release();
   }
 };

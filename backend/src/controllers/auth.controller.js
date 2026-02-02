@@ -1,7 +1,22 @@
 import jwt from "jsonwebtoken";
 import pool from "../config/db.config.js";
 import { generateAccessToken } from "../utils/token.js";
-import { registerUser, loginUser } from "../services/auth.service.js";
+import { registerUser, loginUser, changePassword as changePasswordService } from "../services/auth.service.js";
+
+export const changePassword = async (req, res, next) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: "Both old and new passwords are required" });
+    }
+
+    await changePasswordService(req.user.id, oldPassword, newPassword);
+
+    res.json({ success: true, message: "Password updated successfully" });
+  } catch (err) {
+    next(err);
+  }
+};
 
 export const register = async (req, res, next) => {
   try {

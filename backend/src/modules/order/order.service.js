@@ -17,17 +17,22 @@ export async function createOrder(orderData) {
   const {
     customerId,
     hubId,
+    storeId, // New field for Store Orders
     items,
     delivery,
     paymentMethod = 'COD'
   } = orderData;
 
   const client = await pool.connect();
-  const lockKey = `lock:inventory:hub:${hubId}`;
+  // Determine if this is a Store Order or Hub Order
+  const isStoreOrder = !!storeId;
+  const targetId = isStoreOrder ? storeId : hubId;
+  const lockKey = isStoreOrder ? `lock:inventory:store:${storeId}` : `lock:inventory:hub:${hubId}`;
+
   let lockToken = null;
 
   try {
-    // Step 1: Acquire distributed lock for this hub's inventory
+    // Step 1: Acquire distributed lock
     lockToken = await acquireLock(lockKey, 15); // 15 second lock
     if (!lockToken) {
       throw new Error('Unable to acquire inventory lock. Please try again.');
@@ -36,29 +41,51 @@ export async function createOrder(orderData) {
     // Step 2: Begin PostgreSQL transaction
     await client.query('BEGIN');
 
-    // Step 3: Lock inventory rows with SELECT FOR UPDATE
+    // Step 3: Lock inventory/product rows with SELECT FOR UPDATE
     const productIds = items.map(item => item.productId);
-    const lockInventoryQuery = `
-      SELECT 
-        i.inventory_id,
-        i.product_id,
-        i.stock_quantity,
-        i.reserved_quantity,
-        p.base_price,
-        p.name as product_name
-      FROM inventory i
-      INNER JOIN products p ON i.product_id = p.product_id
-      WHERE 
-        i.hub_id = $1 
-        AND i.product_id = ANY($2)
-        AND p.is_active = true
-      FOR UPDATE -- Lock these rows until transaction completes
-    `;
 
-    const inventoryResult = await client.query(lockInventoryQuery, [hubId, productIds]);
-    const inventoryMap = new Map(
-      inventoryResult.rows.map(row => [row.product_id, row])
-    );
+    let inventoryMap;
+
+    if (isStoreOrder) {
+      // Store Order: Lock rows in PRODUCT table
+      // Note: product table stores stock directly
+      const lockProductsQuery = `
+          SELECT 
+            product_id,
+            stock_quantity,
+            0 as reserved_quantity, -- Stores don't use reserved yet
+            price as base_price,
+            name as product_name
+          FROM product
+          WHERE 
+            store_id = $1 
+            AND product_id = ANY($2)
+            AND is_available = true
+          FOR UPDATE
+        `;
+      const result = await client.query(lockProductsQuery, [storeId, productIds]);
+      inventoryMap = new Map(result.rows.map(row => [row.product_id, row]));
+    } else {
+      // Hub Order: Lock rows in INVENTORY table
+      const lockInventoryQuery = `
+          SELECT 
+            i.inventory_id,
+            i.product_id,
+            i.stock_quantity,
+            i.reserved_quantity,
+            p.base_price,
+            p.name as product_name
+          FROM inventory i
+          INNER JOIN products p ON i.product_id = p.product_id
+          WHERE 
+            i.hub_id = $1 
+            AND i.product_id = ANY($2)
+            AND p.is_active = true
+          FOR UPDATE
+        `;
+      const result = await client.query(lockInventoryQuery, [hubId, productIds]);
+      inventoryMap = new Map(result.rows.map(row => [row.product_id, row]));
+    }
 
     // Step 4: Validate stock availability
     const insufficientStock = [];
@@ -68,7 +95,7 @@ export async function createOrder(orderData) {
       const inventory = inventoryMap.get(item.productId);
 
       if (!inventory) {
-        throw new Error(`Product ${item.productId} not found at this store`);
+        throw new Error(`Product ${item.productId} not found at this location`);
       }
 
       const availableStock = inventory.stock_quantity - inventory.reserved_quantity;
@@ -82,7 +109,8 @@ export async function createOrder(orderData) {
         });
       }
 
-      subtotal += inventory.base_price * item.quantity;
+      // Parse price as float to avoid string concat issues
+      subtotal += parseFloat(inventory.base_price) * item.quantity;
     }
 
     if (insufficientStock.length > 0) {
@@ -102,6 +130,7 @@ export async function createOrder(orderData) {
       INSERT INTO orders (
         customer_id,
         hub_id,
+        store_id,
         delivery_address_street,
         delivery_address_area,
         delivery_address_city,
@@ -116,9 +145,9 @@ export async function createOrder(orderData) {
         payment_status,
         expected_delivery_time
       ) VALUES (
-        $1, $2, $3, $4, $5, $6,
-        ST_SetSRID(ST_MakePoint($7, $8), 4326),
-        $9, $10, $11, $12, $13, $14, $15,
+        $1, $2, $3, $4, $5, $6, $7,
+        ST_SetSRID(ST_MakePoint($8, $9), 4326),
+        $10, $11, $12, $13, $14, $15, $16,
         NOW() + INTERVAL '30 minutes'
       )
       RETURNING 
@@ -130,7 +159,8 @@ export async function createOrder(orderData) {
 
     const orderResult = await client.query(createOrderQuery, [
       customerId,
-      hubId,
+      isStoreOrder ? null : hubId,
+      isStoreOrder ? storeId : null,
       delivery.street,
       delivery.area,
       delivery.city,
@@ -165,20 +195,33 @@ export async function createOrder(orderData) {
     }
 
     // Step 8: Deduct inventory (atomic)
-    const deductInventoryQuery = `
-      UPDATE inventory
-      SET 
-        stock_quantity = stock_quantity - $1,
-        updated_at = NOW()
-      WHERE hub_id = $2 AND product_id = $3
-    `;
+    if (isStoreOrder) {
+      // Deduct from PRODUCT table
+      const deductProductQuery = `
+            UPDATE product
+            SET stock_quantity = stock_quantity - $1
+            WHERE product_id = $2
+        `;
+      for (const item of items) {
+        await client.query(deductProductQuery, [item.quantity, item.productId]);
+      }
+    } else {
+      // Deduct from INVENTORY table
+      const deductInventoryQuery = `
+          UPDATE inventory
+          SET 
+            stock_quantity = stock_quantity - $1,
+            updated_at = NOW()
+          WHERE hub_id = $2 AND product_id = $3
+        `;
 
-    for (const item of items) {
-      await client.query(deductInventoryQuery, [
-        item.quantity,
-        hubId,
-        item.productId
-      ]);
+      for (const item of items) {
+        await client.query(deductInventoryQuery, [
+          item.quantity,
+          hubId,
+          item.productId
+        ]);
+      }
     }
 
     // Step 9: Log initial order status
@@ -191,11 +234,53 @@ export async function createOrder(orderData) {
     await client.query('COMMIT');
 
     // Step 11: Invalidate cache
-    await deleteCachePattern(`products:hub:${hubId}`);
+    if (isStoreOrder) {
+      // await deleteCachePattern(`products:store:${storeId}`); // If we cached specific store products
+    } else {
+      await deleteCachePattern(`products:hub:${hubId}`);
+    }
     await deleteCachePattern(`stores:nearby:*`);
 
     // Step 12: Fetch complete order with items
     const completeOrder = await getOrderById(order.order_id);
+
+    // Step 13: Auto-create Parcel for this order
+
+    // Determine Pickup & Delivery City
+    let pickupCityId, deliveryCityId;
+
+    if (isStoreOrder) {
+      // Fetch Store City
+      const storeRes = await client.query('SELECT city_id FROM store WHERE store_id = $1', [storeId]);
+      pickupCityId = storeRes.rows[0]?.city_id;
+    } else {
+      // Fetch Hub City
+      const hubRes = await client.query('SELECT city_id FROM hub WHERE hub_id = $1', [hubId]);
+      pickupCityId = hubRes.rows[0]?.city_id;
+    }
+
+    // Use pickup city as fallback for delivery or try to match address
+    deliveryCityId = pickupCityId;
+
+    // Calculate total weight
+    const totalWeight = items.reduce((sum, item) => sum + (item.quantity * 0.5), 0); // Mock 0.5kg per item
+
+    // Create Parcel logic (simplified)
+    const parcelQuery = `
+      INSERT INTO parcel (
+        sender_id, pickup_city_id, delivery_city_id, assigned_hub_id, weight_kg, status, created_at
+      ) VALUES (
+        $1, $2, $3, $4, $5, 'created', NOW()
+      ) RETURNING parcel_id, tracking_code
+    `;
+
+    await client.query(parcelQuery, [
+      customerId, // Temporarily set customer as sender so they can track it easily
+      pickupCityId,
+      deliveryCityId,
+      isStoreOrder ? null : hubId, // Parcel assigned_hub_id might need nullable too or link to Store?
+      totalWeight
+    ]);
 
     // TODO: Push to delivery assignment queue (BullMQ)
     // await orderQueue.add('assign-delivery', { orderId: order.order_id });

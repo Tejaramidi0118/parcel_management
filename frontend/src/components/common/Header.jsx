@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Package, Menu, X, User, LogOut } from 'lucide-react';
+import { Package, Menu, X, User, LogOut, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
+import { useCart } from '@/context/CartContext';
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuth();
+  const { cartCount } = useCart();
+
   const publicLinks = [
     { path: '/', label: 'Home' },
     { path: '/about', label: 'About' },
@@ -29,6 +32,8 @@ export default function Header() {
         return '/courier/dashboard';
       case 'customer':
         return '/customer/dashboard';
+      case 'store_owner':
+        return '/store/dashboard';
       default:
         return '/';
     }
@@ -53,12 +58,38 @@ export default function Header() {
           </Link>))}
 
           {isAuthenticated ? (<>
-            <Link to={getDashboardPath()}>
-              <Button variant="outline" size="sm" className="gap-2">
-                <User className="h-4 w-4" />
-                Dashboard
-              </Button>
-            </Link>
+            {(user?.role !== 'customer') && (
+              <Link to={getDashboardPath()}>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <User className="h-4 w-4" />
+                  Dashboard
+                </Button>
+              </Link>
+            )}
+            {user?.role === 'customer' && (
+              <>
+                <Link to="/customer/book">
+                  <Button variant="ghost" size="sm">
+                    Send Package
+                  </Button>
+                </Link>
+                <Link to="/shop">
+                  <Button variant="ghost" size="sm">
+                    Shop
+                  </Button>
+                </Link>
+                <Link to="/cart">
+                  <Button variant="ghost" size="sm" className="relative">
+                    <ShoppingCart className="h-5 w-5" />
+                    {cartCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                        {cartCount}
+                      </span>
+                    )}
+                  </Button>
+                </Link>
+              </>
+            )}
             <Link to="/profile">
               <Button variant="ghost" size="sm">
                 Profile
@@ -100,6 +131,14 @@ export default function Header() {
                 Profile
               </Button>
             </Link>
+            {user?.role === 'customer' && (
+              <Link to="/cart" onClick={() => setIsMenuOpen(false)}>
+                <Button variant="ghost" className="w-full gap-2">
+                  <ShoppingCart className="h-4 w-4" />
+                  Cart ({cartCount})
+                </Button>
+              </Link>
+            )}
             <Button variant="ghost" className="w-full gap-2" onClick={() => {
               handleLogout();
               setIsMenuOpen(false);
